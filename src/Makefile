@@ -6,9 +6,11 @@ LDFLAGS =
 
 LDLIBS =
 
-daedalus: daedalus.o
+daedalus: daedalus.o map.o
 
 daedalus.o: daedalus.c
+
+map.o: map.c map.h
 
 .PHONY: clean
 clean:

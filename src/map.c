@@ -1,28 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define TABLE_SIZE 100
+#include "map.h"
 
-typedef struct Entry {
-    void *key;
-    void *value;
-    struct Entry *next;
-} Entry;
 
-typedef struct {
-    Entry **table;
-    unsigned int (*hashFunc)(void *key);
-    int (*keyCompareFunc)(void *key1, void *key2);
-    void (*keyFreeFunc)(void *key);
-    void (*valueFreeFunc)(void *value);
-} HashMap;
-
-// Create a new hash table
+// Create a new hashmap
 HashMap *createHashMap(
     unsigned int (*hashFunc)(void *),
     int (*keyCompareFunc)(void *, void *),
@@ -42,22 +25,23 @@ HashMap *createHashMap(
 }
 
 // Create a new hash table entry
-Entry *createEntry(void *key, void *value) {
+Entry *createEntry(void *key, void *value, int ttl) {
     Entry *entry = malloc(sizeof(Entry));
     entry->key = key;
     entry->value = value;
     entry->next = NULL;
+    entry->ttl = ttl;
     return entry;
 }
 
 // Insert a key-value pair into the hash table
-void insert(HashMap *hashMap, void *key, void *value) {
+void* insertHashMap(HashMap *hashMap, void *key, void *value, int ttl) {
     unsigned int slot = hashMap->hashFunc(key) % TABLE_SIZE;
     Entry *entry = hashMap->table[slot];
 
     if (entry == NULL) {
-        hashMap->table[slot] = createEntry(key, value);
-        return;
+        hashMap->table[slot] = createEntry(key, value, ttl);
+        return hashMap->table[slot];
     }
 
     Entry *prev = NULL;
@@ -67,32 +51,34 @@ void insert(HashMap *hashMap, void *key, void *value) {
                 hashMap->valueFreeFunc(entry->value);
             }
             entry->value = value;
-            return;
+            entry->ttl = ttl;
+            return entry;
         }
         prev = entry;
         entry = entry->next;
     }
 
-    prev->next = createEntry(key, value);
+    prev->next = createEntry(key, value, ttl);
+    return prev->next;
 }
 
-// Retrieve a value by key from the hash table
-void *get(HashMap *hashMap, void *key) {
+// Retrieve a value by key from the hashmap
+void *getHashMap(HashMap *hashMap, void *key, int ttl) {
     unsigned int slot = hashMap->hashFunc(key) % TABLE_SIZE;
     Entry *entry = hashMap->table[slot];
 
     while (entry != NULL) {
         if (hashMap->keyCompareFunc(entry->key, key) == 0) {
+            entry->ttl = ttl;
             return entry->value;
         }
         entry = entry->next;
     }
-
     return NULL;
 }
 
-// Delete a key-value pair from the hash table
-void delete(HashMap *hashMap, void *key) {
+// Delete a key-value pair from the hashmap
+int removeHashMap(HashMap *hashMap, void *key) {
     unsigned int slot = hashMap->hashFunc(key) % TABLE_SIZE;
     Entry *entry = hashMap->table[slot];
     Entry *prev = NULL;
@@ -103,7 +89,7 @@ void delete(HashMap *hashMap, void *key) {
     }
 
     if (entry == NULL) {
-        return;
+        return -1;
     }
 
     //Found an entry and adjusting accordingly (if entry is first in the slot)
@@ -121,9 +107,27 @@ void delete(HashMap *hashMap, void *key) {
     }
 
     free(entry);
+    return 0;
 }
 
-// Free the memory used by the hash table
+
+void evictHashMap(HashMap* hashmap) {
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        Entry *curr = hashmap->table[i];
+        while(curr) {
+            if (curr->ttl < 0) {
+                Entry *temp = curr->next;
+                removeHashMap(hashmap, curr->key);
+                curr = temp;
+            }
+            else {
+                curr = curr->next;
+            }
+        }
+    }
+}
+
+// Free the memory used by the hashmap
 void freeHashMap(HashMap *hashMap) {
     for (int i = 0; i < TABLE_SIZE; i++) {
         Entry *entry = hashMap->table[i];
@@ -172,6 +176,7 @@ void intValueFreeFunc(void *value) {
     free(value);
 }
 
+/*
 int main() {
     // Create a hash map with string keys and integer values
     HashMap *map = createHashMap(
@@ -206,3 +211,4 @@ int main() {
 
     return 0;
 }
+*/
