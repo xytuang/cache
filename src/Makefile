@@ -8,7 +8,7 @@ LDLIBS =
 
 daedalus: daedalus.o map.o
 
-daedalus.o: daedalus.c
+daedalus.o: daedalus.c map.h
 
 map.o: map.c map.h
 

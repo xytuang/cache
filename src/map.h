@@ -1,3 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+
 #define TABLE_SIZE 100
 
 typedef struct Entry {
@@ -13,6 +18,7 @@ typedef struct {
     int (*keyCompareFunc)(void *key1, void *key2);
     void (*keyFreeFunc)(void *key);
     void (*valueFreeFunc)(void *value);
+    pthread_mutex_t mutex;
 } HashMap;
 
 // Create a new hash table
