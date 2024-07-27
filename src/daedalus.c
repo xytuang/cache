@@ -2,21 +2,40 @@
 #include <unistd.h>
 #include "map.h"
 
+typedef struct bgThread {
+    int running;
+    pthread_t thread;
+} bgThread;
+
 typedef struct Daedalus {
     int checkFrequency;
     int timeToLive;
     HashMap* store;
-    pthread_t evictThread;
+    bgThread* evictThread;
 } Daedalus;
 
 void* evict(void* cache) {
     Daedalus* currCache = (Daedalus*) cache;
-    while(1) {
+    while(currCache->evictThread->running == 1) {
         evictHashMap(currCache->store);
         sleep(currCache->checkFrequency);
     }
     
     return NULL;
+}
+
+bgThread* createBgThread(Daedalus* cache) {
+    bgThread* bg = (bgThread*) malloc(sizeof(bgThread));
+    if (bg == NULL) {
+        perror("failed to malloc background thread struct");
+        return NULL;
+    }
+    bg->running = 1;
+    if (pthread_create(&bg->thread, NULL, evict, cache) != 0) {
+        perror("Failed to create evict thread\n");
+        return NULL;
+    }
+    return bg;
 }
 
 //returns null on error, pointer to Dadealus on success
@@ -29,7 +48,9 @@ Daedalus* createDaedalus(int checkFrequency, int timeToLive, int keyType, int va
 
     newCache->checkFrequency = checkFrequency;
     newCache->timeToLive = timeToLive;
-    if (pthread_create(&newCache->evictThread, NULL, evict, &checkFrequency) != 0) {
+    bgThread* bg = createBgThread(newCache);
+    newCache->evictThread = bg;
+    if (bg == NULL) {
         perror("Failed to create evict thread\n");
         freeHashMap(newCache->store);
         return NULL;
@@ -57,6 +78,10 @@ void destroy(Daedalus *cache, void *key) {
 
 void freeDaedalus(Daedalus* cache) {
     freeHashMap(cache->store);
+    cache->evictThread->running = 0;
+    if (pthread_join(cache->evictThread->thread, NULL) != 0) {
+        perror("failed to join evict thread\n");
+    }
     free(cache);
 }
 
