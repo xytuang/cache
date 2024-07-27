@@ -93,6 +93,7 @@ void *getHashMap(HashMap *hashMap, void *key, int ttl) {
         if (hashMap->keyCompareFunc(entry->key, key) == 0) {
             entry->ttl = ttl;
             pthread_mutex_unlock(&hashMap->mutex);
+            //printf("%d\n", (int*)entry->value);
             return entry->value;
         }
         entry = entry->next;
@@ -131,8 +132,10 @@ int removeHashMap(HashMap *hashMap, void *key) {
     if (hashMap->valueFreeFunc) {
         hashMap->valueFreeFunc(entry->value);
     }
-
-    free(entry);
+    printf("%d\n", prev == NULL);
+    if (prev != NULL) {
+        free(entry);
+    }
     pthread_mutex_unlock(&hashMap->mutex);
     return 0;
 }

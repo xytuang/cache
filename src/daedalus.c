@@ -7,7 +7,7 @@ typedef struct Daedalus {
     HashMap* store;
 } Daedalus;
 
-//returns null on error, Daedalus pointer on success
+//returns null on error, pointer to Dadealus on success
 Daedalus* createDaedalus(int checkFrequency, int timeToLive, int keyType, int valueType) {
     Daedalus* newCache = (Daedalus*)malloc(sizeof(Daedalus));
     if (!newCache) {
@@ -50,25 +50,32 @@ void freeDaedalus(Daedalus* cache) {
 int main() {
     // Create a hash map with string keys and integer values
     Daedalus* cache = createDaedalus(5, 5, 1, 1);
-
+    
     // Insert some key-value pairs
-    add(cache, strdup("key1"), (void*)1);
+    int* val = malloc(sizeof(int));
+    *val = 1;
+    add(cache, strdup("key1"), val);
 
-    add(cache, strdup("key2"), (void*)2);
 
-    add(cache, strdup("key3"), (void*)3);
+    val = malloc(sizeof(int));
+    *val = 2;
+    add(cache, strdup("key2"), val);
 
+    val = malloc(sizeof(int));
+    *val = 3;
+    add(cache, strdup("key3"), val);
+    
     // Retrieve values
     printf("Value for key1: %d\n", *(int *)get(cache, "key1"));
+    
     printf("Value for key2: %d\n", *(int *)get(cache, "key2"));
     printf("Value for key3: %d\n", *(int *)get(cache, "key3"));
-
+    
     // Delete a key-value pair
     destroy(cache, "key2");
-    printf("Value for key2 after deletion: %p\n", get(cache, "key2"));
+    printf("key2 is null: %d\n", get(cache, "key2") == NULL);
 
     // Free the hash map
     freeDaedalus(cache);
-
     return 0;
 }
