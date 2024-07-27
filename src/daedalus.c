@@ -1,11 +1,23 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include "map.h"
 
 typedef struct Daedalus {
     int checkFrequency;
     int timeToLive;
     HashMap* store;
+    pthread_t evictThread;
 } Daedalus;
+
+void* evict(void* cache) {
+    Daedalus* currCache = (Daedalus*) cache;
+    while(1) {
+        evictHashMap(currCache->store);
+        sleep(currCache->checkFrequency);
+    }
+    
+    return NULL;
+}
 
 //returns null on error, pointer to Dadealus on success
 Daedalus* createDaedalus(int checkFrequency, int timeToLive, int keyType, int valueType) {
@@ -17,11 +29,12 @@ Daedalus* createDaedalus(int checkFrequency, int timeToLive, int keyType, int va
 
     newCache->checkFrequency = checkFrequency;
     newCache->timeToLive = timeToLive;
+    if (pthread_create(&newCache->evictThread, NULL, evict, &checkFrequency) != 0) {
+        perror("Failed to create evict thread\n");
+        freeHashMap(newCache->store);
+        return NULL;
+    }
     return newCache;
-}
-
-void evict(Daedalus* cache) {
-    evictHashMap(cache->store);
 }
 
 // Returns NULL on error
@@ -49,7 +62,7 @@ void freeDaedalus(Daedalus* cache) {
 
 int main() {
     // Create a hash map with string keys and integer values
-    Daedalus* cache = createDaedalus(5, 5, 1, 1);
+    Daedalus* cache = createDaedalus(5, 64, 1, 1);
     
     // Insert some key-value pairs
     int* val = malloc(sizeof(int));

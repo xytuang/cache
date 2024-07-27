@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "map.h"
 
@@ -25,7 +26,8 @@ HashMap *createHashMap(
     for (int i = 0; i < TABLE_SIZE; i++) {
         map->table[i] = NULL;
     }
-
+    
+    map->numEntries = 0;
     map->hashFunc = hashFunc;
     map->keyCompareFunc = keyCompareFunc;
     map->keyFreeFunc = keyFreeFunc;
@@ -39,37 +41,42 @@ HashMap *createHashMap(
 }
 
 // Create a new hash table entry
-Entry *createEntry(void *key, void *value, int ttl) {
+Entry *createEntry(void *key, void *value, time_t ttl) {
     Entry *entry = malloc(sizeof(Entry));
     entry->key = key;
     entry->value = value;
     entry->next = NULL;
-    entry->ttl = ttl;
+    entry->ttl = time(NULL) + ttl;
     return entry;
 }
 
 // Insert a key-value pair into the hash table
-void* insertHashMap(HashMap *hashMap, void *key, void *value, int ttl) {
+void *insertHashMap(HashMap *hashMap, void *key, void *value, time_t ttl) {
     pthread_mutex_lock(&hashMap->mutex);
 
     unsigned int slot = hashMap->hashFunc(key) % TABLE_SIZE;
     Entry *entry = hashMap->table[slot];
 
+    //case where slot is empty
     if (entry == NULL) {
         hashMap->table[slot] = createEntry(key, value, ttl);
         pthread_mutex_unlock(&hashMap->mutex);
+        hashMap->numEntries++;
         return hashMap->table[slot];
     }
 
+    //case where slot is nonempty
     Entry *prev = NULL;
     while (entry != NULL) {
+        //case where found entry with matching key. update the value in this case
         if (hashMap->keyCompareFunc(entry->key, key) == 0) {
             if (hashMap->valueFreeFunc) {
                 hashMap->valueFreeFunc(entry->value);
             }
             entry->value = value;
-            entry->ttl = ttl;
+            entry->ttl = time(NULL) + ttl;
             pthread_mutex_unlock(&hashMap->mutex);
+            hashMap->numEntries++;
             return entry;
         }
         prev = entry;
@@ -77,23 +84,22 @@ void* insertHashMap(HashMap *hashMap, void *key, void *value, int ttl) {
     }
 
     prev->next = createEntry(key, value, ttl);
-
+    hashMap->numEntries++;
     pthread_mutex_unlock(&hashMap->mutex);
 
     return prev->next;
 }
 
 // Retrieve a value by key from the hashmap
-void *getHashMap(HashMap *hashMap, void *key, int ttl) {
+void *getHashMap(HashMap *hashMap, void *key, time_t ttl) {
     pthread_mutex_lock(&hashMap->mutex);
     unsigned int slot = hashMap->hashFunc(key) % TABLE_SIZE;
     Entry *entry = hashMap->table[slot];
 
     while (entry != NULL) {
         if (hashMap->keyCompareFunc(entry->key, key) == 0) {
-            entry->ttl = ttl;
+            entry->ttl = time(NULL) + ttl;
             pthread_mutex_unlock(&hashMap->mutex);
-            //printf("%d\n", (int*)entry->value);
             return entry->value;
         }
         entry = entry->next;
@@ -113,7 +119,7 @@ int removeHashMap(HashMap *hashMap, void *key) {
         prev = entry;
         entry = entry->next;
     }
-
+    //key not found. invalid
     if (entry == NULL) {
         pthread_mutex_unlock(&hashMap->mutex);
         return -1;
@@ -132,10 +138,11 @@ int removeHashMap(HashMap *hashMap, void *key) {
     if (hashMap->valueFreeFunc) {
         hashMap->valueFreeFunc(entry->value);
     }
-    printf("%d\n", prev == NULL);
+    //printf("prev is null: %d\n", prev == NULL);
     if (prev != NULL) {
         free(entry);
     }
+    hashMap->numEntries--;
     pthread_mutex_unlock(&hashMap->mutex);
     return 0;
 }
@@ -147,7 +154,7 @@ void evictHashMap(HashMap* hashMap) {
     for (int i = 0; i < TABLE_SIZE; i++) {
         Entry *curr = hashMap->table[i];
         while(curr) {
-            if (curr->ttl < 0) {
+            if (curr->ttl < time(NULL)) {
                 Entry *temp = curr->next;
                 pthread_mutex_unlock(&hashMap->mutex);
                 removeHashMap(hashMap, curr->key);
@@ -176,12 +183,13 @@ void freeHashMap(HashMap *hashMap) {
                 hashMap->valueFreeFunc(temp->value);
             }
             free(temp);
+            hashMap->numEntries--;
         }
     }
     free(hashMap->table);
     pthread_mutex_destroy(&hashMap->mutex);
+    printf("Entries remainining: %d\n", hashMap->numEntries);
     free(hashMap);
-
 }
 
 // Sample hash function for string keys

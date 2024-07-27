@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
 
 #define TABLE_SIZE 100
 
@@ -9,11 +10,12 @@ typedef struct Entry {
     void *key;
     void *value;
     struct Entry *next;
-    int ttl;
+    time_t ttl;
 } Entry;
 
 typedef struct {
     Entry **table;
+    int numEntries;
     unsigned int (*hashFunc)(void *key);
     int (*keyCompareFunc)(void *key1, void *key2);
     void (*keyFreeFunc)(void *key);
@@ -30,13 +32,13 @@ HashMap *createHashMap(
 );
 
 // Create a new hash table entry
-Entry *createEntry(void *key, void *value, int ttl);
+Entry *createEntry(void *key, void *value, time_t ttl);
 
 // Insert a key-value pair into the hashmap
-void *insertHashMap(HashMap *hashMap, void *key, void *value, int ttl);
+void *insertHashMap(HashMap *hashMap, void *key, void *value, time_t ttl);
 
 // Retrieve a value by key from the hashmap
-void *getHashMap(HashMap *hashMap, void *key, int ttl);
+void *getHashMap(HashMap *hashMap, void *key, time_t ttl);
 
 // Delete a key-value pair from the hashmap
 int removeHashMap(HashMap *hashMap, void *key);
