@@ -1,5 +1,5 @@
 # What is Daedalus?
-Daedalus is a simple in-memory cache. The cache stores data as key-value pairs, where the keys are interface types and the values can be of any type. The cache is designed to be concurrent-safe with the use of a sync.Mutex.
+Daedalus is a simple in-memory cache. The cache stores data as key-value pairs, where the keys are interface types and the values can be of any type. The cache is designed to be concurrent-safe with the use of a pthread_mutex_t.
 
 This library "daedalus" is a pure implementation and does not rely on any external dependencies. It is a self-contained implementation of an in-memory cache.
 
@@ -14,11 +14,15 @@ add() adds a key value pair to the cache
 
 get() retrieves the value for a given key in the cache
 
+destroy() removes the key value pair in the cache
+
 The cache is periodically updated every checkFrequency interval.
 
-Specs:
+# Specs
 
-Cache size: 100 entry hashtable
+Cache size: 100 entry hashtable (ie. hashtable that is 100 entries big, each entry being a linked list)
+
 Eviction policy: Time To Live
+
 Data storage: In Memory
 
