@@ -1,5 +1,5 @@
 # What is Daedalus?
-Daedalus is a simple in-memory cache. The cache stores data as key-value pairs, where the keys are interface types and the values can be of any type. The cache is designed to be concurrent-safe with the use of a pthread_mutex_t.
+Daedalus is a simple in-memory cache. The cache stores data as key-value pairs, where the keys are (work in progress) interface types and the values can be of (work in progress) any type. The cache is designed to be concurrent-safe with the use of a pthread_mutex_t.
 
 This library "daedalus" is a pure implementation and does not rely on any external dependencies. It is a self-contained implementation of an in-memory cache.
 
@@ -26,3 +26,8 @@ Eviction policy: Time To Live
 
 Data storage: In Memory
 
+# TODO
+
+Make Daedalus support generics
+
+Test Daedalus

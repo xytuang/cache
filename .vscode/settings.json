@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "string": "c",
-        "daedalustypes.h": "c"
+        "daedalustypes.h": "c",
+        "atomic": "c"
     }
 }
